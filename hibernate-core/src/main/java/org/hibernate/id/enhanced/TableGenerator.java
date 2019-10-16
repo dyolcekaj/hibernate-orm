@@ -549,6 +549,7 @@ public class TableGenerator implements PersistentIdentifierGenerator, Configurab
 		return "insert into " + renderedTableName + " (" + segmentColumnName + ", " + valueColumnName + ") " + " values (?,?)";
 	}
 
+	@SuppressWarnings("WeakerAccess")
 	protected String buildUpdateNullQuery() {
 		return "update " + renderedTableName +
 				" set " + valueColumnName + "=? " +
