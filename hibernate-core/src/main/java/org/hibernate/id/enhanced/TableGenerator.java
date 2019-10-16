@@ -246,6 +246,7 @@ public class TableGenerator implements PersistentIdentifierGenerator, Configurab
 	private String selectQuery;
 	private String insertQuery;
 	private String updateQuery;
+	private String updateNullQuery;
 
 	private Optimizer optimizer;
 	private long accessCount;
@@ -548,6 +549,13 @@ public class TableGenerator implements PersistentIdentifierGenerator, Configurab
 		return "insert into " + renderedTableName + " (" + segmentColumnName + ", " + valueColumnName + ") " + " values (?,?)";
 	}
 
+	protected String buildUpdateNullQuery() {
+		return "update " + renderedTableName +
+				" set " + valueColumnName + "=? " +
+				" where " + valueColumnName + " is null and " + segmentColumnName + "=?";
+
+	}
+
 	protected InitCommand generateInsertInitCommand() {
 		int value = initialValue;
 		if ( storeLastUsedValue ) {
@@ -618,6 +626,20 @@ public class TableGenerator implements PersistentIdentifierGenerator, Configurab
 														defaultValue = 1;
 													}
 													value.initialize( selectRS, defaultValue );
+
+													if (selectRS.wasNull()) {
+														try (PreparedStatement updateNullPS = prepareStatement(
+															connection,
+															updateNullQuery,
+															statementLogger,
+															statsCollector
+														)) {
+															LOG.tracef("writing default value [%d] in place of null", defaultValue );
+															value.bind( updateNullPS, 1 );
+															updateNullPS.setString(2, segmentValue );
+															executeUpdate( updateNullPS, statsCollector );
+														}
+													}
 												}
 												selectRS.close();
 											}
@@ -771,5 +793,6 @@ public class TableGenerator implements PersistentIdentifierGenerator, Configurab
 		this.selectQuery = buildSelectQuery( dialect );
 		this.updateQuery = buildUpdateQuery();
 		this.insertQuery = buildInsertQuery();
+		this.updateNullQuery = buildUpdateNullQuery();
 	}
 }
